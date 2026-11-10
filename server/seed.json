@@ -1,0 +1,328 @@
+{
+  "site": {
+    "heroTitle": "Aprende a reconocer el bolseo antes de que pase",
+    "heroText": "Cuatro simulaciones interactivas de autoprotección para estudiantes. Toma decisiones, observa consecuencias y fortalece hábitos seguros."
+  },
+  "modules": [
+    {
+      "id": "m1",
+      "tag": "Reporte ágil",
+      "title": "Reporte ágil",
+      "desc": "Reconoce el incidente, protege tus cuentas y aprende cómo reportarlo."
+    },
+    {
+      "id": "m2",
+      "tag": "Resguardo",
+      "title": "Resguardo vulnerable",
+      "desc": "Evita exposiciones frecuentes de tu celular y mochila."
+    },
+    {
+      "id": "m3",
+      "tag": "Distracción",
+      "title": "Distracción por audífonos",
+      "desc": "Identifica distracciones que limitan tu atención al entorno."
+    },
+    {
+      "id": "m4",
+      "tag": "Tapón",
+      "title": "Tapón o empujones",
+      "desc": "Detecta bloqueos, aglomeraciones y empujones al subir y bajar."
+    }
+  ],
+  "situations": [
+    {
+      "id": "s1",
+      "moduleId": "m3",
+      "where": "Paradero · 18:30 h",
+      "img": "https://images.unsplash.com/photo-1634428466049-d6d37b51976d?w=1600&fit=crop&auto=format&q=80",
+      "q": "Está oscureciendo y hay mucha gente esperando la ruta. ¿Qué haces con tu celular?",
+      "opts": [
+        {
+          "text": "Sigo con los audífonos puestos y la pantalla en la mano.",
+          "good": false,
+          "consequence": "Con la vista en la pantalla no notas que alguien se coloca muy cerca. Un roce en el hombro te distrae y el celular desaparece de tu mano.",
+          "feedback": "Con el oído y la vista ocupados no percibes un roce ni un acercamiento. 48% viaja así todo el trayecto."
+        },
+        {
+          "text": "Lo guardo en un compartimento interior y me mantengo atento.",
+          "good": true,
+          "consequence": "Nadie ve tu celular y notas cuando alguien se acerca de más. Cambias de lugar y nada ocurre.",
+          "feedback": "Menos celular a la vista, más atención al entorno. Es la base de la autoprotección."
+        }
+      ]
+    },
+    {
+      "id": "s2",
+      "moduleId": "m2",
+      "where": "Paradero · 14:10 h",
+      "img": "https://images.unsplash.com/photo-1775264049146-084e182f1bbd?w=1000&fit=crop&auto=format&q=80",
+      "q": "Un desconocido amable te pide prestado tu celular \"para una llamada urgente\". ¿Qué haces?",
+      "opts": [
+        {
+          "text": "Se lo presto: parece estar en apuros.",
+          "good": false,
+          "consequence": "Con tu celular en la mano, se aleja unos pasos y otra persona lo cubre. Cuando reaccionas ya no los ves.",
+          "feedback": "Prestar el equipo a extraños es una táctica frecuente. Puedes ofrecerte a marcar tú el número sin soltarlo."
+        },
+        {
+          "text": "Amablemente me niego y le sugiero pedir ayuda en una tienda cercana.",
+          "good": true,
+          "consequence": "La persona insiste un momento y luego se va. Conservas tu celular y tu tranquilidad.",
+          "feedback": "Ayudar no implica entregar tus pertenencias. Una negativa cortés es suficiente."
+        }
+      ]
+    },
+    {
+      "id": "s3",
+      "moduleId": "m4",
+      "where": "Llega tu ruta",
+      "img": "https://images.unsplash.com/photo-1689949606349-d216f6c69eb3?w=1000&fit=crop&auto=format&q=80",
+      "q": "Tu ruta llega y muchos se amontonan en la puerta. ¿Cómo subes?",
+      "opts": [
+        {
+          "text": "Me meto en el centro del grupo para no perder el lugar.",
+          "good": false,
+          "consequence": "En el apretón sientes empujones por todos lados. Al sentarte, notas que tu bolsillo quedó abierto.",
+          "feedback": "El amontonamiento es la ventana de oportunidad que buscan. Perder un asiento cuesta menos que perder el celular."
+        },
+        {
+          "text": "Espero unos segundos, dejo bajar a quienes salen y subo sin empujar.",
+          "good": true,
+          "consequence": "Subes con espacio a tu alrededor y eliges un lugar lejos de la puerta.",
+          "feedback": "Evitar el tapón reduce el roce con desconocidos y te da tiempo de ubicar un buen lugar."
+        }
+      ]
+    },
+    {
+      "id": "s4",
+      "moduleId": "m2",
+      "where": "Subiendo a la unidad",
+      "img": "https://images.unsplash.com/photo-1509749837427-ac94a2553d0e?w=2000&fit=crop&auto=format&q=80",
+      "q": "La ruta va llena. ¿Cómo llevas la mochila?",
+      "opts": [
+        {
+          "text": "Sobre la espalda, con el celular en el bolsillo exterior.",
+          "good": false,
+          "consequence": "Entre el apretón alguien abre el cierre sin que lo notes. Te das cuenta hasta que bajas.",
+          "feedback": "Es la zona de mayor riesgo: no la ves y es fácil de abrir en el apretón."
+        },
+        {
+          "text": "Al frente, abrazada, con el celular en el bolsillo interior.",
+          "good": true,
+          "consequence": "Sientes cualquier movimiento sobre tu mochila y nadie puede abrirla sin que lo notes.",
+          "feedback": "El 100% de la muestra ya la lleva al frente. Falta sumar el resguardo interior."
+        }
+      ]
+    },
+    {
+      "id": "s5",
+      "moduleId": "m4",
+      "where": "Dentro del camión",
+      "img": "https://images.unsplash.com/photo-1520442922418-8211a6fe605c?w=1400&fit=crop&auto=format&q=80",
+      "q": "Alguien se atora en la puerta y empuja. Todos se amontonan. ¿Qué haces?",
+      "opts": [
+        {
+          "text": "Reviso rápido si traigo mi celular.",
+          "good": false,
+          "consequence": "Al tocar tu bolsillo muestras dónde lo llevas. Mientras todos se empujan, alguien más lo extrae.",
+          "feedback": "Delatas dónde lo llevas. El \"tapón\" es justo la ventana de segundos que buscan."
+        },
+        {
+          "text": "Protejo mis pertenencias con el brazo, sin mostrarlas, y me alejo de la puerta.",
+          "good": true,
+          "consequence": "El grupo se acomoda y tú quedas cerca del conductor, con todo en su lugar.",
+          "feedback": "Cubrir sin exhibir y ubicarte lejos de las puertas, cerca del conductor, reduce la oportunidad."
+        }
+      ]
+    },
+    {
+      "id": "s6",
+      "moduleId": "m3",
+      "where": "Pasillo de la unidad",
+      "img": "https://images.unsplash.com/photo-1589395241612-86d52ec4b9f4?w=1000&fit=crop&auto=format&q=80",
+      "q": "Alguien te empuja con fuerza y se disculpa de inmediato. ¿Qué haces?",
+      "opts": [
+        {
+          "text": "Le sonrío y sigo con lo que hacía.",
+          "good": false,
+          "consequence": "Mientras respondes, una segunda persona aprovecha el momento. Más tarde notas el bolsillo vacío.",
+          "feedback": "El empujón con disculpa suele ser la distracción. Una persona distrae y otra extrae."
+        },
+        {
+          "text": "Reviso con la mirada mi entorno y cubro mis pertenencias sin sacarlas.",
+          "good": true,
+          "consequence": "Notas a una segunda persona muy cerca, te mueves de lugar y el intento se frustra.",
+          "feedback": "Después de un empujón, asume que puede haber un segundo actor y protege tus cosas."
+        }
+      ]
+    },
+    {
+      "id": "s7",
+      "moduleId": "m2",
+      "where": "Descenso",
+      "img": "https://images.unsplash.com/photo-1600206085398-f6ede93b06f8?w=1400&fit=crop&auto=format&q=80",
+      "q": "Vas a bajar y varias personas se pegan a ti en la puerta. ¿Qué haces?",
+      "opts": [
+        {
+          "text": "Bajo con prisa mirando el celular para avisar que llegué.",
+          "good": false,
+          "consequence": "En el escalón te rodean y alguien jala el celular. Con las manos ocupadas no alcanzas a reaccionar.",
+          "feedback": "El descenso es un punto crítico: te rodean cuando tienes menos control de tu equilibrio."
+        },
+        {
+          "text": "Guardo el celular antes de bajar y bajo con las manos libres, atento al escalón.",
+          "good": true,
+          "consequence": "Bajas con equilibrio y nadie tiene oportunidad. Una vez fuera, caminas hacia un lugar iluminado.",
+          "feedback": "Avisa que llegaste ya en un lugar seguro. Antes de bajar, guarda el celular y mantén las manos libres."
+        }
+      ]
+    },
+    {
+      "id": "s8",
+      "moduleId": "m1",
+      "where": "Después del robo",
+      "img": "https://images.unsplash.com/photo-1575655273633-6ac40769c587?w=1000&fit=crop&auto=format&q=80",
+      "q": "Te quitaron el celular. ¿Qué haces primero?",
+      "opts": [
+        {
+          "text": "Lo busco por la calle y reviso mis redes.",
+          "good": false,
+          "consequence": "Pasan los minutos y los ladrones acceden a tus cuentas o cambian contraseñas.",
+          "feedback": "Pierdes minutos valiosos: tus cuentas y datos siguen expuestos."
+        },
+        {
+          "text": "Bloqueo cuentas y línea, localizo o bloqueo por IMEI y aviso a mis contactos.",
+          "good": true,
+          "consequence": "En minutos tu información queda protegida y tus contactos están alertados.",
+          "feedback": "Proteger tu información primero, y después denunciar para ayudar a mapear zonas críticas."
+        }
+      ]
+    },
+    {
+      "id": "s9",
+      "moduleId": "m1",
+      "where": "Horas después",
+      "img": "https://images.unsplash.com/photo-1600064252184-8d03b69d53e4?w=1000&fit=crop&auto=format&q=80",
+      "q": "Ya estás en casa y piensas que denunciar es una pérdida de tiempo. ¿Qué haces?",
+      "opts": [
+        {
+          "text": "No denuncio: nadie le va a dar seguimiento.",
+          "good": false,
+          "consequence": "El caso no queda registrado y la zona sigue sin atención. El ciclo continúa.",
+          "feedback": "Solo 12% denuncia. Sin registros, las autoridades no ven los puntos críticos."
+        },
+        {
+          "text": "Denuncio y comparto la táctica en la plataforma para alertar a otros.",
+          "good": true,
+          "consequence": "Queda un registro y otros estudiantes aprenden de lo que viviste.",
+          "feedback": "Tu reporte ayuda a detectar horarios y lugares críticos, aunque no recuperes el equipo."
+        }
+      ]
+    }
+  ],
+  "tips": [
+    {
+      "id": "t1",
+      "moment": "Antes de subir",
+      "title": "Evita el pico",
+      "text": "Rutas y horarios con menor afluencia, también en fin de semana.",
+      "img": "https://images.unsplash.com/photo-1600206085398-f6ede93b06f8?w=1400&fit=crop&auto=format&q=80"
+    },
+    {
+      "id": "t2",
+      "moment": "Antes de subir",
+      "title": "Oídos abiertos",
+      "text": "Quita un audífono o evita usarlos en paraderos y unidades llenas.",
+      "img": "https://images.unsplash.com/photo-1764072565980-4467b16b503f?w=1000&fit=crop&auto=format&q=80"
+    },
+    {
+      "id": "t3",
+      "moment": "Antes de subir",
+      "title": "Viaja acompañado",
+      "text": "En grupo es más difícil ser perfilado.",
+      "img": "https://images.unsplash.com/photo-1775264049146-084e182f1bbd?w=1000&fit=crop&auto=format&q=80"
+    },
+    {
+      "id": "t4",
+      "moment": "Dentro de la unidad",
+      "title": "Mochila al frente",
+      "text": "Abrázala y mantén los cierres a la vista.",
+      "img": "https://images.unsplash.com/photo-1759852692971-a2abc6799cbd?w=1000&fit=crop&auto=format&q=80"
+    },
+    {
+      "id": "t5",
+      "moment": "Dentro de la unidad",
+      "title": "Bolsillo interior",
+      "text": "El celular al fondo, no en bolsas exteriores ni traseras.",
+      "img": "https://images.unsplash.com/photo-1551974222-1d49f576a2a4?w=1400&fit=crop&auto=format&q=80"
+    },
+    {
+      "id": "t6",
+      "moment": "Dentro de la unidad",
+      "title": "Lejos de la puerta",
+      "text": "Cerca del conductor y fuera de los puntos de empujón.",
+      "img": "https://images.unsplash.com/photo-1520442922418-8211a6fe605c?w=1400&fit=crop&auto=format&q=80"
+    },
+    {
+      "id": "t7",
+      "moment": "Al bajar",
+      "title": "Manos libres",
+      "text": "Guarda el celular antes de bajar y cuida el escalón.",
+      "img": "https://images.unsplash.com/photo-1689949606349-d216f6c69eb3?w=1000&fit=crop&auto=format&q=80"
+    },
+    {
+      "id": "t8",
+      "moment": "Si ocurre un robo",
+      "title": "Bloquea primero",
+      "text": "Línea, cuentas y IMEI antes que perseguir o buscar.",
+      "img": "https://images.unsplash.com/photo-1575655273633-6ac40769c587?w=1000&fit=crop&auto=format&q=80"
+    },
+    {
+      "id": "t9",
+      "moment": "Si ocurre un robo",
+      "title": "Denuncia y reporta",
+      "text": "Aunque sea lento, deja registro y comparte la táctica.",
+      "img": "https://images.unsplash.com/photo-1600064252184-8d03b69d53e4?w=1000&fit=crop&auto=format&q=80"
+    }
+  ],
+  "reports": [],
+  "posts": [
+    {
+      "id": "p1",
+      "author": "Ejemplo · Valeria M.",
+      "route": "Ruta 10",
+      "title": "Caso simulado · Tapón en la puerta trasera a las 18:30",
+      "text": "[Ejemplo del prototipo, no reporte verificado] Ayer en la Ruta 10, a la altura de Ciudad Universitaria, dos personas se quedaron frenando la puerta al subir. Alguien detrás empujó y a una compañera le tocaron la mochila. Suban con el celular guardado.",
+      "date": "2026-03-12",
+      "replies": [
+        {
+          "id": "r1",
+          "author": "Ejemplo · Diego R.",
+          "text": "Me pasó algo igual la semana pasada, misma ruta y mismo horario. Gracias por avisar.",
+          "date": "2026-03-13"
+        }
+      ]
+    },
+    {
+      "id": "p2",
+      "author": "Ejemplo · Anónimo",
+      "route": "Ruta 40",
+      "title": "Caso simulado · Cuidado al bajar en el paradero del mercado",
+      "text": "[Ejemplo del prototipo, no reporte verificado] Al descender varias personas rodean y se pegan mucho. Conviene bajar con el celular en la mano contraria a la multitud o guardado en un bolsillo delantero.",
+      "date": "2026-03-09",
+      "replies": []
+    },
+    {
+      "id": "p3",
+      "author": "Ejemplo · Andrea P.",
+      "route": "Ruta 5",
+      "title": "Caso simulado · Alguien tiró monedas al piso",
+      "text": "[Ejemplo del prototipo, no reporte verificado] Un pasajero dejó caer monedas junto a la puerta y mientras la gente se agachaba intentaron sacar un teléfono. No se agachen sin cuidar sus cosas.",
+      "date": "2026-03-05",
+      "replies": []
+    }
+  ],
+  "users": [],
+  "progress": {},
+  "session": null
+}

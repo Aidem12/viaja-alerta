@@ -34,9 +34,11 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --include=dev
 
       - name: Build application
+        env:
+          DEPLOY_TARGET: github-pages
         run: npm run build
 
       - name: Setup Pages

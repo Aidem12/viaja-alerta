@@ -4,7 +4,11 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
-  base: '/viaja-alerta/',
+  // GitHub Pages utiliza /viaja-alerta/
+  // Render y localhost utilizan /
+  base: process.env.DEPLOY_TARGET === 'github-pages'
+    ? '/viaja-alerta/'
+    : '/',
 
   plugins: [react(), tailwindcss()],
 

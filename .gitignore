@@ -1,6 +1,12 @@
 node_modules/
 dist/
+
+# Variables de entorno privadas
 .env
+.env.local
+.env.*.local
+
+# Datos y archivos temporales
 server/data/
 *.log
 .DS_Store

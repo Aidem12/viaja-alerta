@@ -1,6 +1,10 @@
 
 import { pool } from './db.mjs';
 
+// ============================================================
+// Utilidades de validación
+// ============================================================
+
 function fail(message, status = 400) {
   const error = new Error(message);
   error.status = status;
@@ -22,10 +26,14 @@ function required(value, name, min, max) {
 }
 
 function optional(value, name, max) {
-  if (value == null) return '';
+  if (value == null) {
+    return '';
+  }
+
   if (typeof value !== 'string' || value.length > max) {
     fail(`Campo inválido: ${name}`);
   }
+
   return value.trim();
 }
 
@@ -33,17 +41,38 @@ function validList(value, name, max) {
   if (!Array.isArray(value) || value.length > max) {
     fail(`Lista inválida: ${name}`);
   }
+
   return value;
 }
 
 function uniqueIds(items, name) {
   const ids = items.map(item => item.id);
+
   if (new Set(ids).size !== ids.length) {
     fail(`Identificadores duplicados: ${name}`);
   }
 }
 
-export async function syncEducationalContent(admin, payload) {
+// ============================================================
+// Sincronización del contenido educativo
+//
+// Sin externalClient:
+//   Administra su propia transacción.
+//
+// Con externalClient:
+//   Participa en una transacción externa.
+//   La función llamadora controla COMMIT y ROLLBACK.
+// ============================================================
+
+export async function syncEducationalContent(
+  admin,
+  payload,
+  externalClient = null
+) {
+  // ----------------------------------------------------------
+  // 1. Validar permisos y entrada
+  // ----------------------------------------------------------
+
   if (admin?.role !== 'admin') {
     fail('Acceso restringido a administración.', 403);
   }
@@ -52,17 +81,33 @@ export async function syncEducationalContent(admin, payload) {
     fail('Datos inválidos.');
   }
 
+  // ----------------------------------------------------------
+  // 2. Validar configuración general
+  // ----------------------------------------------------------
+
   const site = {
     heroTitle: required(
-      payload.site?.heroTitle, 'título', 1, 220
+      payload.site?.heroTitle,
+      'título',
+      1,
+      220
     ),
     heroText: required(
-      payload.site?.heroText, 'descripción', 1, 1000
+      payload.site?.heroText,
+      'descripción',
+      1,
+      1000
     )
   };
 
+  // ----------------------------------------------------------
+  // 3. Validar módulos
+  // ----------------------------------------------------------
+
   const modules = validList(
-    payload.modules, 'módulos', 40
+    payload.modules,
+    'módulos',
+    40
   ).map(m => ({
     id: required(m?.id, 'id', 1, 70),
     tag: required(m?.tag, 'etiqueta', 1, 70),
@@ -70,129 +115,298 @@ export async function syncEducationalContent(admin, payload) {
     desc: required(m?.desc, 'descripción', 1, 500)
   }));
 
+  // ----------------------------------------------------------
+  // 4. Validar situaciones y opciones
+  // ----------------------------------------------------------
+
   const situations = validList(
-    payload.situations, 'situaciones', 150
+    payload.situations,
+    'situaciones',
+    150
   ).map(s => ({
     id: required(s?.id, 'id', 1, 70),
-    moduleId: required(s?.moduleId, 'módulo', 1, 70),
-    where: required(s?.where, 'lugar', 1, 150),
-    img: optional(s?.img, 'imagen', 2000),
-    q: required(s?.q, 'pregunta', 1, 700),
-    opts: validList(s?.opts, 'opciones', 8).map(o => ({
-      text: required(o?.text, 'opción', 1, 600),
+    moduleId: required(
+      s?.moduleId,
+      'módulo',
+      1,
+      70
+    ),
+    where: required(
+      s?.where,
+      'lugar',
+      1,
+      150
+    ),
+    img: optional(
+      s?.img,
+      'imagen',
+      2000
+    ),
+    q: required(
+      s?.q,
+      'pregunta',
+      1,
+      700
+    ),
+
+    opts: validList(
+      s?.opts,
+      'opciones',
+      8
+    ).map(o => ({
+      text: required(
+        o?.text,
+        'opción',
+        1,
+        600
+      ),
       good: o?.good === true,
       consequence: required(
-        o?.consequence, 'consecuencia', 1, 2000
+        o?.consequence,
+        'consecuencia',
+        1,
+        2000
       ),
       feedback: required(
-        o?.feedback, 'retroalimentación', 1, 2000
+        o?.feedback,
+        'retroalimentación',
+        1,
+        2000
       )
     }))
   }));
 
+  // ----------------------------------------------------------
+  // 5. Validar recomendaciones
+  // ----------------------------------------------------------
+
   const tips = validList(
-    payload.tips, 'recomendaciones', 100
+    payload.tips,
+    'recomendaciones',
+    100
   ).map(t => ({
     id: required(t?.id, 'id', 1, 70),
-    moment: required(t?.moment, 'momento', 1, 100),
-    title: required(t?.title, 'título', 1, 150),
-    text: required(t?.text, 'texto', 1, 1000),
-    img: optional(t?.img, 'imagen', 2000)
+    moment: required(
+      t?.moment,
+      'momento',
+      1,
+      100
+    ),
+    title: required(
+      t?.title,
+      'título',
+      1,
+      150
+    ),
+    text: required(
+      t?.text,
+      'texto',
+      1,
+      1000
+    ),
+    img: optional(
+      t?.img,
+      'imagen',
+      2000
+    )
   }));
+
+  // ----------------------------------------------------------
+  // 6. Validar identificadores y relaciones
+  // ----------------------------------------------------------
 
   uniqueIds(modules, 'módulos');
   uniqueIds(situations, 'situaciones');
   uniqueIds(tips, 'recomendaciones');
 
-  const moduleIds = new Set(modules.map(m => m.id));
+  const moduleIds = new Set(
+    modules.map(m => m.id)
+  );
 
-  if (situations.some(s => !moduleIds.has(s.moduleId))) {
-    fail('Situaciones con módulos inexistentes.');
+  if (
+    situations.some(
+      s => !moduleIds.has(s.moduleId)
+    )
+  ) {
+    fail(
+      'Situaciones con módulos inexistentes.'
+    );
   }
 
-  const client = await pool.connect();
+  // ----------------------------------------------------------
+  // 7. Preparar transacción PostgreSQL
+  // ----------------------------------------------------------
+
+  const ownsTransaction = externalClient === null;
+
+  const client = externalClient ?? await pool.connect();
 
   try {
-    await client.query('BEGIN');
+    if (ownsTransaction) {
+      await client.query('BEGIN');
+    }
 
     // Serializar las sincronizaciones administrativas.
+    // Si hay una transacción externa, esta debe estar
+    // iniciada antes de llamar a esta función.
     await client.query(
       'SELECT pg_advisory_xact_lock(20261111)'
     );
 
-    // Impedir eliminaciones accidentales.
+    // --------------------------------------------------------
+    // 8. Consultar registros existentes
+    //
+    // Las consultas son secuenciales para evitar ejecutar
+    // varias operaciones simultáneas sobre el mismo client.
+    // --------------------------------------------------------
 
     const existing = [
-        await client.query('SELECT id FROM modules'),
-        await client.query('SELECT id FROM situations'),
-        await client.query('SELECT id FROM tips'),
-        await client.query(
-    `SELECT situation_id, option_index
-     FROM situation_options`
-  )
-];
+      await client.query(
+        'SELECT id FROM modules'
+      ),
 
+      await client.query(
+        'SELECT id FROM situations'
+      ),
 
-    const suppliedModules = new Set(modules.map(m => m.id));
+      await client.query(
+        'SELECT id FROM tips'
+      ),
+
+      await client.query(
+        `SELECT situation_id, option_index
+         FROM situation_options`
+      )
+    ];
+
+    // --------------------------------------------------------
+    // 9. Verificar que no se eliminen registros existentes
+    // --------------------------------------------------------
+
+    const suppliedModules = new Set(
+      modules.map(m => m.id)
+    );
+
     const suppliedSituations = new Map(
       situations.map(s => [s.id, s])
     );
-    const suppliedTips = new Set(tips.map(t => t.id));
 
-    if (existing[0].rows.some(r => !suppliedModules.has(r.id))) {
-      fail('No se permite eliminar módulos existentes.');
+    const suppliedTips = new Set(
+      tips.map(t => t.id)
+    );
+
+    // Proteger módulos.
+    if (
+      existing[0].rows.some(
+        row => !suppliedModules.has(row.id)
+      )
+    ) {
+      fail(
+        'No se permite eliminar módulos existentes.'
+      );
     }
 
-    if (existing[1].rows.some(
-      r => !suppliedSituations.has(r.id)
-    )) {
-      fail('No se permite eliminar situaciones existentes.');
+    // Proteger situaciones.
+    if (
+      existing[1].rows.some(
+        row => !suppliedSituations.has(row.id)
+      )
+    ) {
+      fail(
+        'No se permite eliminar situaciones existentes.'
+      );
     }
 
-    if (existing[2].rows.some(r => !suppliedTips.has(r.id))) {
-      fail('No se permite eliminar recomendaciones existentes.');
+    // Proteger recomendaciones.
+    if (
+      existing[2].rows.some(
+        row => !suppliedTips.has(row.id)
+      )
+    ) {
+      fail(
+        'No se permite eliminar recomendaciones existentes.'
+      );
     }
 
-    if (existing[3].rows.some(r => {
-      const situation = suppliedSituations.get(r.situation_id);
-      return !situation ||
-        r.option_index >= situation.opts.length;
-    })) {
-      fail('No se permite eliminar opciones existentes.');
+    // Proteger opciones de cuestionarios.
+    if (
+      existing[3].rows.some(row => {
+        const situation = suppliedSituations.get(
+          row.situation_id
+        );
+
+        return (
+          !situation ||
+          row.option_index >= situation.opts.length
+        );
+      })
+    ) {
+      fail(
+        'No se permite eliminar opciones existentes.'
+      );
     }
 
-    // Configuración general.
+    // --------------------------------------------------------
+    // 10. Actualizar configuración general
+    // --------------------------------------------------------
+
     await client.query(
-      `INSERT INTO site_settings
-         (id, hero_title, hero_text)
+      `INSERT INTO site_settings (
+         id,
+         hero_title,
+         hero_text
+       )
        VALUES (1, $1, $2)
        ON CONFLICT (id)
        DO UPDATE SET
          hero_title = EXCLUDED.hero_title,
          hero_text = EXCLUDED.hero_text`,
-      [site.heroTitle, site.heroText]
+      [
+        site.heroTitle,
+        site.heroText
+      ]
     );
 
-    // Módulos.
-    for (const m of modules) {
+    // --------------------------------------------------------
+    // 11. Crear o actualizar módulos
+    // --------------------------------------------------------
+
+    for (const module of modules) {
       await client.query(
-        `INSERT INTO modules
-           (id, tag, title, description)
+        `INSERT INTO modules (
+           id,
+           tag,
+           title,
+           description
+         )
          VALUES ($1, $2, $3, $4)
          ON CONFLICT (id)
          DO UPDATE SET
            tag = EXCLUDED.tag,
            title = EXCLUDED.title,
            description = EXCLUDED.description`,
-        [m.id, m.tag, m.title, m.desc]
+        [
+          module.id,
+          module.tag,
+          module.title,
+          module.desc
+        ]
       );
     }
 
-    // Situaciones y opciones.
-    for (const s of situations) {
+    // --------------------------------------------------------
+    // 12. Crear o actualizar situaciones y opciones
+    // --------------------------------------------------------
+
+    for (const situation of situations) {
       await client.query(
-        `INSERT INTO situations
-           (id, module_id, location, image_url, question)
+        `INSERT INTO situations (
+           id,
+           module_id,
+           location,
+           image_url,
+           question
+         )
          VALUES ($1, $2, $3, $4, $5)
          ON CONFLICT (id)
          DO UPDATE SET
@@ -200,34 +414,62 @@ export async function syncEducationalContent(admin, payload) {
            location = EXCLUDED.location,
            image_url = EXCLUDED.image_url,
            question = EXCLUDED.question`,
-        [s.id, s.moduleId, s.where, s.img, s.q]
+        [
+          situation.id,
+          situation.moduleId,
+          situation.where,
+          situation.img,
+          situation.q
+        ]
       );
 
-      for (const [index, o] of s.opts.entries()) {
+      for (
+        const [index, option] of situation.opts.entries()
+      ) {
         await client.query(
-          `INSERT INTO situation_options
-             (situation_id, option_index, option_text,
-              is_correct, consequence, feedback)
+          `INSERT INTO situation_options (
+             situation_id,
+             option_index,
+             option_text,
+             is_correct,
+             consequence,
+             feedback
+           )
            VALUES ($1, $2, $3, $4, $5, $6)
-           ON CONFLICT (situation_id, option_index)
+           ON CONFLICT (
+             situation_id,
+             option_index
+           )
            DO UPDATE SET
              option_text = EXCLUDED.option_text,
              is_correct = EXCLUDED.is_correct,
              consequence = EXCLUDED.consequence,
              feedback = EXCLUDED.feedback`,
           [
-            s.id, index, o.text, o.good,
-            o.consequence, o.feedback
+            situation.id,
+            index,
+            option.text,
+            option.good,
+            option.consequence,
+            option.feedback
           ]
         );
       }
     }
 
-    // Recomendaciones.
-    for (const t of tips) {
+    // --------------------------------------------------------
+    // 13. Crear o actualizar recomendaciones
+    // --------------------------------------------------------
+
+    for (const tip of tips) {
       await client.query(
-        `INSERT INTO tips
-           (id, moment, title, body, image_url)
+        `INSERT INTO tips (
+           id,
+           moment,
+           title,
+           body,
+           image_url
+         )
          VALUES ($1, $2, $3, $4, $5)
          ON CONFLICT (id)
          DO UPDATE SET
@@ -235,18 +477,49 @@ export async function syncEducationalContent(admin, payload) {
            title = EXCLUDED.title,
            body = EXCLUDED.body,
            image_url = EXCLUDED.image_url`,
-        [t.id, t.moment, t.title, t.text, t.img]
+        [
+          tip.id,
+          tip.moment,
+          tip.title,
+          tip.text,
+          tip.img
+        ]
       );
     }
 
-    await client.query('COMMIT');
+    // --------------------------------------------------------
+    // 14. Confirmar cambios
+    // --------------------------------------------------------
 
-    return { site, modules, situations, tips };
+    if (ownsTransaction) {
+      await client.query('COMMIT');
+    }
+
+    return {
+      site,
+      modules,
+      situations,
+      tips
+    };
 
   } catch (error) {
-    await client.query('ROLLBACK');
+    // --------------------------------------------------------
+    // 15. Revertir cambios ante errores
+    // --------------------------------------------------------
+
+    if (ownsTransaction) {
+      await client.query('ROLLBACK');
+    }
+
     throw error;
+
   } finally {
-    client.release();
+    // --------------------------------------------------------
+    // 16. Liberar conexión si pertenece a esta función
+    // --------------------------------------------------------
+
+    if (ownsTransaction) {
+      client.release();
+    }
   }
 }

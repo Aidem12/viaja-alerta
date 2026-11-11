@@ -1,7 +1,5 @@
 # Viaja Alerta — Plataforma web de autoprotección universitaria
 
-Proyecto web funcional basado en el prototipo **Figma Make** contenido en `Pagina.rar` y en el diagrama de casos de uso de la Plataforma Web Autoprotección Universitaria (BUAP). Conserva la composición visual, estilos, imágenes y pantallas del prototipo y añade servidor, persistencia y control de acceso.
-
 ## Tecnologías
 
 - **Frontend:** React 19, TypeScript, Vite 8, Tailwind CSS 4, HTML y CSS responsivo.

@@ -685,3 +685,56 @@ export async function deleteUser(
   // Actualizar la lista de usuarios desde Neon.
   await reload()
 }
+
+
+
+
+type EducationalResource = 'modules' | 'situations' | 'tips'
+
+async function deleteEducationalResource(
+  resource: EducationalResource,
+  id: string
+): Promise<void> {
+  if (currentUser(db)?.role !== 'admin') {
+    throw new Error('Debes ser administrador.')
+  }
+
+  // Ejecutar primero los cambios que aún esperan
+  // el autoguardado de 550 ms.
+  if (adminTimer) {
+    clearTimeout(adminTimer)
+    adminTimer = null
+
+    await queueAdminSave()
+  }
+
+  // Esperar otras sincronizaciones ya iniciadas.
+  await adminSaveQueue
+
+  // Eliminar directamente desde PostgreSQL.
+  await api(
+    `/admin/${resource}/${encodeURIComponent(id)}`,
+    'DELETE'
+  )
+
+  // Refrescar el estado completo desde Neon.
+  await reload()
+}
+
+export async function deleteModule(
+  moduleId: string
+): Promise<void> {
+  await deleteEducationalResource('modules', moduleId)
+}
+
+export async function deleteSituation(
+  situationId: string
+): Promise<void> {
+  await deleteEducationalResource('situations', situationId)
+}
+
+export async function deleteTip(
+  tipId: string
+): Promise<void> {
+  await deleteEducationalResource('tips', tipId)
+}

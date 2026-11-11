@@ -16,12 +16,22 @@ import { publicState } from './pg-core.mjs';
 import { adminSync } from './pg-admin-sync.mjs';
 import { deleteUser } from './pg-admin-actions.mjs';
 
+import {
+  deleteModule,
+  deleteSituation,
+  deleteTip
+} from './pg-educational-delete.mjs';
+
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(dir, '..');
 
 const PORT = Number(
   process.env.API_PORT || process.env.PORT || 3001
 );
+
+// ============================================================
+// Límites de solicitudes
+// ============================================================
 
 const rateCounters = new Map();
 
@@ -43,6 +53,7 @@ function throttle(req, key, limit, windowMs = 60_000) {
     const error = new Error(
       'Demasiados intentos. Vuelve a probar más tarde.'
     );
+
     error.status = 429;
     throw error;
   }
@@ -56,6 +67,10 @@ function throttle(req, key, limit, windowMs = 60_000) {
   }
 }
 
+// ============================================================
+// Orígenes autorizados
+// ============================================================
+
 function allowedOrigins() {
   return [
     process.env.APP_ORIGIN,
@@ -65,6 +80,10 @@ function allowedOrigins() {
     'http://127.0.0.1:5173'
   ].filter(Boolean);
 }
+
+// ============================================================
+// Respuestas HTTP
+// ============================================================
 
 function send(res, status, data, headers = {}) {
   res.writeHead(status, {
@@ -103,8 +122,13 @@ async function readBody(req, limit = 9_000_000) {
   }
 }
 
+// ============================================================
+// Cookies de sesión
+// ============================================================
+
 function sessionCookie(token, clear = false) {
   const maxAge = clear ? 0 : 60 * 60 * 24 * 7;
+
   const secure = process.env.SECURE_COOKIES === '1'
     ? '; Secure'
     : '';
@@ -117,6 +141,10 @@ function sessionCookie(token, clear = false) {
     `Max-Age=${maxAge}`
   ].join('; ') + secure;
 }
+
+// ============================================================
+// Errores y permisos
+// ============================================================
 
 function httpError(message, status = 400) {
   const error = new Error(message);
@@ -133,11 +161,14 @@ function requireAdmin(user) {
   }
 }
 
+// ============================================================
+// Enrutador principal
+// ============================================================
+
 async function route(req, res) {
   const origin = req.headers.origin;
 
-  // Protección básica contra solicitudes desde
-  // orígenes no autorizados.
+  // Verificar origen en solicitudes de modificación.
   if (
     !['GET', 'HEAD', 'OPTIONS'].includes(req.method) &&
     origin
@@ -162,7 +193,10 @@ async function route(req, res) {
 
   const key = `${req.method} ${url.pathname}`;
 
-  // Estado del servidor y conexión PostgreSQL.
+  // ==========================================================
+  // Salud del servidor
+  // ==========================================================
+
   if (key === 'GET /api/health') {
     await pool.query('SELECT 1');
 
@@ -178,22 +212,23 @@ async function route(req, res) {
     ? await auth.getUser(req.headers.cookie)
     : null;
 
-  // --------------------------------------------------------
-  // Estado de la plataforma
-  // --------------------------------------------------------
+  // ==========================================================
+  // Estado público
+  // ==========================================================
 
   if (key === 'GET /api/state') {
     return send(res, 200, await publicState(user));
   }
 
-  // --------------------------------------------------------
+  // ==========================================================
   // Autenticación
-  // --------------------------------------------------------
+  // ==========================================================
 
   if (key === 'POST /api/auth/register') {
     throttle(req, 'register', 10);
 
     const body = await readBody(req);
+
     const session = await auth.register(
       body.name,
       body.email,
@@ -212,6 +247,7 @@ async function route(req, res) {
     throttle(req, 'login', 25);
 
     const body = await readBody(req);
+
     const session = await auth.login(
       body.email,
       body.password
@@ -244,7 +280,8 @@ async function route(req, res) {
 
     return send(res, 200, {
       ok: true,
-      message: 'Si existe la cuenta, se ha generado un código de recuperación.',
+      message:
+        'Si existe la cuenta, se ha generado un código de recuperación.',
       ...(devCode ? { devCode } : {})
     });
   }
@@ -261,9 +298,9 @@ async function route(req, res) {
     return send(res, 200, { ok: true });
   }
 
-  // --------------------------------------------------------
+  // ==========================================================
   // Progreso educativo
-  // --------------------------------------------------------
+  // ==========================================================
 
   if (key === 'POST /api/progress/answer') {
     const body = await readBody(req);
@@ -279,12 +316,13 @@ async function route(req, res) {
 
   if (key === 'POST /api/progress/reset') {
     await progress.resetProgress(user);
+
     return send(res, 200, { ok: true });
   }
 
-  // --------------------------------------------------------
+  // ==========================================================
   // Reportes
-  // --------------------------------------------------------
+  // ==========================================================
 
   if (key === 'POST /api/reports') {
     throttle(req, 'reports', 8, 60 * 60_000);
@@ -295,9 +333,9 @@ async function route(req, res) {
     return send(res, 201, created);
   }
 
-  // --------------------------------------------------------
+  // ==========================================================
   // Foro
-  // --------------------------------------------------------
+  // ==========================================================
 
   if (key === 'POST /api/posts') {
     throttle(req, 'posts', 15, 60 * 60_000);
@@ -330,16 +368,16 @@ async function route(req, res) {
 
   if (req.method === 'DELETE' && postMatch) {
     requireAdmin(user);
+
     await forum.deletePost(postMatch[1], user);
 
     return send(res, 200, { ok: true });
   }
 
-  // --------------------------------------------------------
-  // Administración
-  // --------------------------------------------------------
+  // ==========================================================
+  // Administración: usuarios
+  // ==========================================================
 
-  // Eliminar una cuenta de usuario.
   const deleteUserMatch = url.pathname.match(
     /^\/api\/admin\/users\/([0-9a-f-]{36})$/i
   );
@@ -352,7 +390,53 @@ async function route(req, res) {
     return send(res, 200, { ok: true });
   }
 
-  
+  // ==========================================================
+  // Administración: eliminación de contenido educativo
+  // ==========================================================
+
+  // Eliminar módulo y todas sus situaciones.
+  const deleteModuleMatch = url.pathname.match(
+    /^\/api\/admin\/modules\/([a-zA-Z0-9_-]{1,70})$/
+  );
+
+  if (req.method === 'DELETE' && deleteModuleMatch) {
+    requireAdmin(user);
+
+    await deleteModule(user, deleteModuleMatch[1]);
+
+    return send(res, 200, { ok: true });
+  }
+
+  // Eliminar situación educativa.
+  const deleteSituationMatch = url.pathname.match(
+    /^\/api\/admin\/situations\/([a-zA-Z0-9_-]{1,70})$/
+  );
+
+  if (req.method === 'DELETE' && deleteSituationMatch) {
+    requireAdmin(user);
+
+    await deleteSituation(user, deleteSituationMatch[1]);
+
+    return send(res, 200, { ok: true });
+  }
+
+  // Eliminar recomendación.
+  const deleteTipMatch = url.pathname.match(
+    /^\/api\/admin\/tips\/([a-zA-Z0-9_-]{1,70})$/
+  );
+
+  if (req.method === 'DELETE' && deleteTipMatch) {
+    requireAdmin(user);
+
+    await deleteTip(user, deleteTipMatch[1]);
+
+    return send(res, 200, { ok: true });
+  }
+
+  // ==========================================================
+  // Administración: sincronización de contenido
+  // ==========================================================
+
   if (key === 'POST /api/admin/state') {
     requireAdmin(user);
 
@@ -361,6 +445,10 @@ async function route(req, res) {
 
     return send(res, 200, updated);
   }
+
+  // ==========================================================
+  // Administración: publicación de reportes
+  // ==========================================================
 
   const publishMatch = url.pathname.match(
     /^\/api\/admin\/reports\/([-\w]+)\/publish$/
@@ -395,6 +483,10 @@ async function route(req, res) {
     return send(res, 200, { ok: true });
   }
 
+  // ==========================================================
+  // Administración: exportación CSV
+  // ==========================================================
+
   if (key === 'GET /api/admin/reports.csv') {
     requireAdmin(user);
 
@@ -410,9 +502,9 @@ async function route(req, res) {
     return res.end(csv);
   }
 
-  // --------------------------------------------------------
+  // ==========================================================
   // Estadísticas
-  // --------------------------------------------------------
+  // ==========================================================
 
   if (key === 'POST /api/metrics/view') {
     const body = await readBody(req);
@@ -422,9 +514,9 @@ async function route(req, res) {
     return send(res, 200, { ok: true });
   }
 
-  // --------------------------------------------------------
-  // Evidencias: pendientes de almacenamiento externo
-  // --------------------------------------------------------
+  // ==========================================================
+  // Evidencias: pendiente almacenamiento persistente
+  // ==========================================================
 
   if (
     req.method === 'GET' &&
@@ -437,9 +529,9 @@ async function route(req, res) {
     });
   }
 
-  // --------------------------------------------------------
-  // API inexistente
-  // --------------------------------------------------------
+  // ==========================================================
+  // Ruta de API no encontrada
+  // ==========================================================
 
   if (url.pathname.startsWith('/api/')) {
     return send(res, 404, {
@@ -447,9 +539,9 @@ async function route(req, res) {
     });
   }
 
-  // --------------------------------------------------------
+  // ==========================================================
   // Archivos estáticos del frontend
-  // --------------------------------------------------------
+  // ==========================================================
 
   if (!['GET', 'HEAD'].includes(req.method)) {
     return send(res, 405, {
@@ -514,6 +606,10 @@ async function route(req, res) {
   return fs.createReadStream(filename).pipe(res);
 }
 
+// ============================================================
+// Servidor HTTP
+// ============================================================
+
 export const server = http.createServer((req, res) => {
   route(req, res).catch(error => {
     if (res.headersSent) {
@@ -521,11 +617,12 @@ export const server = http.createServer((req, res) => {
       return;
     }
 
-    const status = Number.isInteger(error.status) &&
+    const status =
+      Number.isInteger(error.status) &&
       error.status >= 400 &&
       error.status < 500
-      ? error.status
-      : 500;
+        ? error.status
+        : 500;
 
     console.error('[API]', error.message);
 
@@ -537,7 +634,10 @@ export const server = http.createServer((req, res) => {
   });
 });
 
-// Inicializar PostgreSQL antes de aceptar solicitudes.
+// ============================================================
+// Inicialización de Neon PostgreSQL
+// ============================================================
+
 if (process.env.NODE_ENV !== 'test') {
   try {
     await pool.query('SELECT 1');
@@ -545,8 +645,9 @@ if (process.env.NODE_ENV !== 'test') {
 
     server.listen(PORT, () => {
       console.log(
-        `[Viaja Alerta] PostgreSQL conectado`
+        '[Viaja Alerta] PostgreSQL conectado'
       );
+
       console.log(
         `[Viaja Alerta] http://localhost:${PORT}`
       );

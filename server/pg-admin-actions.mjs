@@ -96,3 +96,76 @@ export async function updateSiteSettings(admin, site) {
     heroText: result.rows[0].hero_text
   };
 }
+
+
+export async function deleteUser(admin, userId) {
+  if (!admin?.id || admin.role !== 'admin') {
+    const error = new Error('Acceso restringido a administración.');
+    error.status = 403;
+    throw error;
+  }
+
+  if (
+    typeof userId !== 'string' ||
+    !/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(userId)
+  ) {
+    const error = new Error('Identificador de usuario inválido.');
+    error.status = 400;
+    throw error;
+  }
+
+  if (admin.id === userId) {
+    const error = new Error('No puedes eliminar tu propia cuenta.');
+    error.status = 403;
+    throw error;
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    // Coordinar operaciones administrativas.
+    await client.query(
+      'SELECT pg_advisory_xact_lock(20261112)'
+    );
+
+    // Comprobar que el administrador mantiene su rol.
+    const actor = await client.query(
+      `SELECT role FROM users
+       WHERE id = $1
+       FOR UPDATE`,
+      [admin.id]
+    );
+
+    if (actor.rows[0]?.role !== 'admin') {
+      const error = new Error('Permisos insuficientes.');
+      error.status = 403;
+      throw error;
+    }
+
+    const result = await client.query(
+      `DELETE FROM users
+       WHERE id = $1
+       RETURNING id`,
+      [userId]
+    );
+
+    if (result.rowCount === 0) {
+      const error = new Error('Usuario no encontrado.');
+      error.status = 404;
+      throw error;
+    }
+
+    await client.query('COMMIT');
+
+    return { ok: true };
+
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+
+  } finally {
+    client.release();
+  }
+}

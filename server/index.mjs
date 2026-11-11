@@ -14,6 +14,7 @@ import * as metrics from './pg-metrics.mjs';
 
 import { publicState } from './pg-core.mjs';
 import { adminSync } from './pg-admin-sync.mjs';
+import { deleteUser } from './pg-admin-actions.mjs';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(dir, '..');
@@ -338,6 +339,20 @@ async function route(req, res) {
   // Administración
   // --------------------------------------------------------
 
+  // Eliminar una cuenta de usuario.
+  const deleteUserMatch = url.pathname.match(
+    /^\/api\/admin\/users\/([0-9a-f-]{36})$/i
+  );
+
+  if (req.method === 'DELETE' && deleteUserMatch) {
+    requireAdmin(user);
+
+    await deleteUser(user, deleteUserMatch[1]);
+
+    return send(res, 200, { ok: true });
+  }
+
+  
   if (key === 'POST /api/admin/state') {
     requireAdmin(user);
 

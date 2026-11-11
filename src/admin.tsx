@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { PageHead } from './ui'
 import { P } from './data'
-import { MOMENTS, currentUser, uid, adminUpdate as update, deleteReport, publishReport, errorNotice, useDB } from './store'
+import { MOMENTS, currentUser, uid, adminUpdate as update, deleteUser, deleteReport, publishReport, errorNotice, useDB } from './store'
 import type { Module, Situation, Tip } from './store'
 
 const inp = 'w-full rounded-lg border border-rule bg-white px-3 py-2 text-sm'
@@ -70,7 +70,13 @@ function Users() {
               </td>
               <td className="px-4 py-3 text-right">
                 {u.id !== d.session && (
-                  <button className={del} onClick={() => confirm(`¿Eliminar a ${u.name}?`) && update((x) => { x.users = x.users.filter((y) => y.id !== u.id); delete x.progress[u.id] })}>Eliminar</button>
+                  <button
+                     className={del}
+                     onClick={() => {
+                       if (!confirm(`¿Eliminar permanentemente a ${u.name}?`)) return
+                       void deleteUser(u.id).catch(errorNotice)
+                     }}
+                   >Eliminar</button>
                 )}
               </td>
             </tr>

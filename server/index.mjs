@@ -272,19 +272,21 @@ async function route(req, res) {
     );
   }
 
-  if (key === 'POST /api/auth/request-reset') {
-    throttle(req, 'reset', 6, 15 * 60_000);
 
-    const body = await readBody(req);
-    const devCode = await reset.requestReset(body.email);
+if (key === 'POST /api/auth/request-reset') {
+  throttle(req, 'reset', 6, 15 * 60_000);
 
-    return send(res, 200, {
-      ok: true,
-      message:
-        'Si existe la cuenta, se ha generado un código de recuperación.',
-      ...(devCode ? { devCode } : {})
-    });
-  }
+  const body = await readBody(req);
+
+  await reset.requestReset(body.email);
+
+  return send(res, 200, {
+    ok: true,
+    message:
+      'Si existe una cuenta con ese correo, recibirás instrucciones para recuperar tu contraseña.'
+  });
+}
+
 
   if (key === 'POST /api/auth/reset') {
     const body = await readBody(req);

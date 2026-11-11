@@ -2,6 +2,11 @@
 import crypto from 'node:crypto';
 import { pool } from './db.mjs';
 import { hashPassword, validEmail } from './pg-auth.mjs';
+import { sendPasswordResetEmail } from './pg-mail.mjs';
+
+// ============================================================
+// Utilidades
+// ============================================================
 
 function fail(message, status = 400) {
   const error = new Error(message);
@@ -10,7 +15,8 @@ function fail(message, status = 400) {
 }
 
 function hash(value) {
-  return crypto.createHash('sha256')
+  return crypto
+    .createHash('sha256')
     .update(value)
     .digest('hex');
 }
@@ -25,47 +31,126 @@ function validatePassword(password) {
   }
 }
 
+// ============================================================
 // Solicitar un código de recuperación
+// ============================================================
+
 export async function requestReset(email) {
   email = validEmail(email);
 
+  // Verificar configuración del servicio de correo.
+  if (
+    !process.env.RESEND_API_KEY ||
+    !process.env.MAIL_FROM
+  ) {
+    fail('Servicio de recuperación no disponible.', 503);
+  }
+
+  // Consultar la cuenta registrada en Neon.
   const result = await pool.query(
     'SELECT id FROM users WHERE email = $1',
     [email]
   );
 
-  // No revelar si el correo existe.
+  // Evitar revelar si un correo está registrado.
   if (result.rowCount === 0) {
     return null;
   }
 
   const userId = result.rows[0].id;
-  const code = crypto.randomBytes(18).toString('base64url');
 
-  await pool.query(
-    `INSERT INTO password_resets
-       (token_hash, user_id, expires_at)
-     VALUES ($1, $2, NOW() + INTERVAL '15 minutes')`,
-    [hash(code), userId]
-  );
+  // Generar un código aleatorio y seguro.
+  const code = crypto
+    .randomBytes(18)
+    .toString('base64url');
 
-  // Solo para pruebas de desarrollo.
-  if (
-    process.env.NODE_ENV !== 'production' &&
-    process.env.DEV_SHOW_RESET_CODE === '1'
-  ) {
-    return code;
+  // Únicamente se guarda el hash en PostgreSQL.
+  const tokenHash = hash(code);
+
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    // Coordinar solicitudes simultáneas de recuperación
+    // para la misma cuenta.
+    await client.query(
+      'SELECT id FROM users WHERE id = $1 FOR UPDATE',
+      [userId]
+    );
+
+    // Invalidar códigos anteriores.
+    await client.query(
+      'DELETE FROM password_resets WHERE user_id = $1',
+      [userId]
+    );
+
+    // Registrar el nuevo código con 15 minutos de validez.
+    await client.query(
+      `INSERT INTO password_resets
+         (token_hash, user_id, expires_at)
+       VALUES ($1, $2, NOW() + INTERVAL '15 minutes')`,
+      [tokenHash, userId]
+    );
+
+    await client.query('COMMIT');
+
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+
+  } finally {
+    client.release();
   }
 
+  // ==========================================================
+  // Enviar el código mediante Resend
+  // ==========================================================
+
+  try {
+    await sendPasswordResetEmail(email, code);
+
+  } catch (error) {
+    // Si falla el envío, invalidar únicamente
+    // el código que acabamos de generar.
+    try {
+      await pool.query(
+        'DELETE FROM password_resets WHERE token_hash = $1',
+        [tokenHash]
+      );
+    } catch (cleanupError) {
+      console.error(
+        '[Recuperación] No se pudo invalidar el código:',
+        cleanupError
+      );
+    }
+
+    console.error(
+      '[Correo] Error al enviar recuperación:',
+      error
+    );
+
+    // Mantener una respuesta indistinguible para correos
+    // existentes o inexistentes.
+    return null;
+  }
+
+  // Nunca devolver el código de recuperación por HTTP.
   return null;
 }
 
-// Cambiar la contraseña utilizando un código válido
+// ============================================================
+// Cambiar contraseña utilizando un código válido
+// ============================================================
+
 export async function resetPassword(email, code, password) {
   email = validEmail(email);
   validatePassword(password);
 
-  if (typeof code !== 'string' || code.length < 20) {
+  if (
+    typeof code !== 'string' ||
+    code.length < 20
+  ) {
     fail('Código de recuperación inválido.');
   }
 
@@ -93,20 +178,24 @@ export async function resetPassword(email, code, password) {
       fail('Código inválido o vencido.');
     }
 
+    // Guardar la nueva contraseña protegida con scrypt.
     await client.query(
       `UPDATE users
        SET password_hash = $1
        WHERE id = $2`,
-      [hashPassword(password), entry.user_id]
+      [
+        hashPassword(password),
+        entry.user_id
+      ]
     );
 
-    // Invalidar todos los códigos del usuario.
+    // Invalidar todos los códigos de recuperación.
     await client.query(
       'DELETE FROM password_resets WHERE user_id = $1',
       [entry.user_id]
     );
 
-    // Cerrar todas las sesiones anteriores.
+    // Cerrar las sesiones anteriores por seguridad.
     await client.query(
       'DELETE FROM sessions WHERE user_id = $1',
       [entry.user_id]
@@ -119,6 +208,7 @@ export async function resetPassword(email, code, password) {
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
+
   } finally {
     client.release();
   }
